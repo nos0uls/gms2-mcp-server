@@ -1,10 +1,10 @@
 {
   "mcpServers": {
     "gms2-mcp": {
-      "command": "python",
-      "args": ["C:/Users/YourName/Desktop/gms2-mcp-server/mcp-serv/mcp_server.py"],
+      "command": "C:/Users/n0souls/gms2-mcp-server/venv/Scripts/python.exe",
+      "args": ["C:/Users/n0souls/gms2-mcp-server/mcp-serv/server.py"],
       "env": {
-        "GMS2_PROJECT_PATH": "C:/Users/YourName/Downloads/Your GMS2 Project"
+        "GMS2_PROJECT_PATH": "REPLACE_WITH_YOUR_GMS2_PROJECT_PATH"
       }
     }
   }

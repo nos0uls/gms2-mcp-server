@@ -1,2 +1,4 @@
+# Зависимости GMS2 MCP Server
+# Единственная зависимость — официальный Python SDK для Model Context Protocol
+# Установка: pip install -r requirements.txt (в активированном venv)
 mcp==1.11.0
-python-dotenv==1.1.1

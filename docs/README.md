@@ -1,198 +1,147 @@
 # GMS2 MCP Server
-MCP server for working with GameMaker Studio 2 projects in Cursor IDE.
 
-## What is this?
-This MCP server parses and extracts information from GameMaker Studio 2 projects, providing developers and AI agents with quick access to project structure, GML code, and asset metadata.
+MCP-сервер для работы с проектами GameMaker Studio 2 в AI-редакторах (Cursor, Windsurf/Antigravity, Claude Desktop).
 
-**Key features:**
-- 📊 **For developers**: export all project data in a readable format for study and analysis
-- 🤖 **For AI agents**: rapid project structure understanding, significantly accelerating vibe-coding
-- 🔍 **Deep analysis**: automatic scanning of objects, scripts, rooms, sprites and their relationships
-- ⚡ **Instant access**: get information about any asset without opening GameMaker Studio 2
+## Быстрый старт
 
-This solution makes working with GMS2 projects more efficient, especially when collaborating with neural networks.
+### 1. Сервер теперь находится в
 
-## Project Structure
 ```
-gms2-mcp-server/
-├── mcp-serv/
-│   ├── mcp_server.py       # MCP server with 7 tools 
-│   └── gms2_parser.py      # GameMaker Studio 2 project parser 
-├── docs/
-│   ├── README.md           # Documentation in English
-│   └── README_RU.md        # Documentation in Russian
-├── requirements.txt        # Dependencies (mcp==1.11.0, python-dotenv==1.1.1)
-└── venv/                   # Python virtual environment (created by user)
-
-Additionally, the user creates:
-└── .cursor/mcp.json       # Cursor IDE configuration (includes project path)
+C:\Users\n0souls\gms2-mcp-server\
 ```
 
-## Installation
-### 1. Clone the repository
-```bash
-git clone https://github.com/Atennebris/gms2-mcp-server
-cd gms2-mcp-server
-```
+(Перемещён из System32 — там нет прав на запись)
 
-### 2. Create virtual environment
-```bash
-# Create venv
-python -m venv venv
+### 2. Конфиг для Windsurf / Antigravity
 
-# Activate (Windows)
-venv\Scripts\activate
+Открой **Settings → MCP Servers** и добавь:
 
-# Activate (Linux/Mac)
-source venv/bin/activate
-```
-
-### 3. Install dependencies
-```bash
-pip install -r requirements.txt
-```
-
-**Current dependencies:**
-- `mcp==1.11.0` - official Python SDK for Model Context Protocol
-- `python-dotenv==1.1.1` - loading configuration from .env files
-
-### 4. Cursor IDE configuration
-
-Create a `.cursor/mcp.json` file in your project root with the following content:
-
-#### Complete configuration with project path (recommended):
 ```json
 {
   "mcpServers": {
     "gms2-mcp": {
-      "command": "python",
-      "args": ["C:/Users/YourName/Desktop/gms2-mcp-server/mcp-serv/mcp_server.py"],
+      "command": "C:/Users/n0souls/gms2-mcp-server/venv/Scripts/python.exe",
+      "args": ["C:/Users/n0souls/gms2-mcp-server/mcp-serv/server.py"],
       "env": {
-        "GMS2_PROJECT_PATH": "C:/Users/YourName/Downloads/Your GMS2 Project"
+        "GMS2_PROJECT_PATH": "C:/path/to/your/gms2/project"
       }
     }
   }
 }
 ```
 
-**⚠️ Important:** 
-- Replace the path in `args` with the absolute path to your MCP server folder!
-- Replace the path in `env.GMS2_PROJECT_PATH` with the absolute path to your GMS2 project folder (contains .yyp file)!
-- Use forward slashes `/` even on Windows
+### 3. Конфиг для Cursor
 
-#### Option 2: Global configuration (for all projects)
-1. In Cursor IDE, open settings
-2. Go to **Tools & Integrations** section
-3. Click **New MCP Server** button at the bottom
-4. This will open the global mcp.json file
-5. Add the same configuration there
+Файл уже создан: `.cursor/mcp.json` — поменяй только `GMS2_PROJECT_PATH`.
 
-**Launch architecture:**
-1. Cursor IDE directly launches `python mcp-serv/mcp_server.py`
-2. `mcp_server.py` loads project path from environment variable `GMS2_PROJECT_PATH` (set in mcp.json)
-3. Parser `gms2_parser.py` provides functionality for working with GMS2 projects
+### 4. Конфиг для Claude Desktop
 
-### 5. Restart Cursor IDE
-After configuring, restart Cursor IDE.
-**In Cursor IDE:** Open command palette and check MCP servers status.
+Файл: `%APPDATA%\Claude\claude_desktop_config.json`
 
-## Features
-
-After successful installation, **7 tools** will be available in Cursor IDE:
-
-- 🔍 **scan_gms2_project** - scan GMS2 project structure (count assets, find GML files)
-- 📄 **get_gml_file_content** - read content of specific GML file
-- 🏠 **get_room_info** - get detailed information about rooms from .yy files
-- 🎯 **get_object_info** - analyze objects and their events from .yy files
-- 🖼️ **get_sprite_info** - sprite information (dimensions, frames, settings)
-- 📊 **export_project_data** - export all project data to text format
-- 📋 **list_project_assets** - list all assets by categories (Objects, Scripts, Rooms, Sprites, etc.)
-
-**Features:**
-- Support for projects with spaces in paths (via environment variables)
-- Automatic project structure detection
-- Export in human-readable format
-- Full compatibility with .yyp and .yy file formats
-- Simplified configuration through mcp.json only
-
-## Usage Example
-
-In Cursor IDE (AI agent) you can ask:
-```
-"Show my GMS2 project structure"
-"Read obj_player object code"
-"What rooms are in the project?"
-"Export all project data"
+```json
+{
+  "mcpServers": {
+    "gms2-mcp": {
+      "command": "C:/Users/n0souls/gms2-mcp-server/venv/Scripts/python.exe",
+      "args": ["C:/Users/n0souls/gms2-mcp-server/mcp-serv/server.py"],
+      "env": {
+        "GMS2_PROJECT_PATH": "C:/path/to/your/gms2/project"
+      }
+    }
+  }
+}
 ```
 
-## System Requirements
+> **Важно:** `GMS2_PROJECT_PATH` — путь к **папке** проекта (где лежит `.yyp` файл).  
+> Используй прямые слэши `/` даже на Windows.
 
-- **Python:** 3.8+ (recommended 3.10+) - tested on 3.12
-- **GameMaker Studio 2:** Any version with .yyp projects
-- **Cursor IDE:** With MCP support
-- **OS:** Windows 10/11 (tested)
+---
 
-## Troubleshooting
+## 21 инструмент
 
-### MCP server shows red status
-1. Check absolute path in `.cursor/mcp.json` (both `args` and `env.GMS2_PROJECT_PATH`)
-2. Make sure venv is created and dependencies are installed
-3. Check project path in `env.GMS2_PROJECT_PATH` section of mcp.json
+### 📖 Чтение
 
-### Server doesn't find the project
-1. Make sure the path in `env.GMS2_PROJECT_PATH` is correct
-2. Path should point to folder with .yyp file
-3. Use forward slashes `/` even on Windows
+| Инструмент | Описание | ~Токенов |
+|:---|:---|:---|
+| `get_project_summary` | Компактная сводка: имя + количество ассетов по категориям | ~100 |
+| `scan_project` | Список ассетов с именами и количеством GML файлов | ~300 |
+| `list_assets` | Плоский список ассетов с пагинацией | ~200 |
+| `get_gml_content` | Содержимое GML файла (с поддержкой диапазона строк) | variable |
+| `get_object_info` | Свойства объекта: спрайт, родитель, события (decoded), переменные | ~300 |
+| `get_room_info` | Параметры комнаты: размеры, слои, скорость | ~200 |
+| `get_sprite_info` | Метаданные спрайта: размеры, origin, bbox, кадры | ~150 |
+| `get_shader_info` | GLSL код шейдера (.vsh + .fsh) и список uniforms | variable |
+| `get_macro_constants` | Все `#macro` константы из GML файлов проекта | ~200 |
 
-### Tools don't display (0 tools)
-1. Restart Cursor IDE
-2. Check that Python interpreter is accessible
-3. Test server manually: `python mcp-serv/mcp_server.py`
+### 🔍 Анализ
 
-### Import errors or path issues
-All import and path issues have been resolved in the current version:
-- `gms2_parser.py` is now in the same directory as `mcp_server.py`
-- Project path is configured directly in `.cursor/mcp.json` via environment variables
-- No config files or wrapper scripts needed
+| Инструмент | Описание |
+|:---|:---|
+| `find_asset_references` | Кто ссылается на ассет X — во всех GML и .yy файлах |
+| `decode_object_events` | Числовые eventType/eventNum → человекочитаемые названия |
+| `get_object_hierarchy` | Дерево наследования: родители + дети + события на каждом уровне |
+| `get_room_instances` | Все экземпляры в комнате с точными (x, y) координатами |
+| `get_gml_definitions_index` | Индекс: все функции, global-переменные, #macro в проекте |
+| `validate_project` | Проверка целостности: битые ссылки, пустые файлы, ошибки парсинга |
 
-## Technical Information
+### 🔎 Поиск
 
-### Dependencies
-- `mcp==1.11.0` - official Python SDK for Model Context Protocol
-- `python-dotenv==1.1.1` - loading configuration from .env files
+| Инструмент | Описание |
+|:---|:---|
+| `search_in_project` | Grep по всем GML файлам с фильтром по категории |
 
-### Architecture
-The project consists of two main components:
-- **mcp-serv/gms2_parser.py** - GameMaker Studio 2 project parser
-- **mcp-serv/mcp_server.py** - MCP server with 7 tools for analysis
+### ✏️ Запись
 
-### What's Changed
-**Version 2.1 improvements:**
-- ✅ Simplified project structure (no wrapper scripts)
-- ✅ Fixed all import and path issues
-- ✅ Removed config.env dependency - all configuration now in mcp.json
-- ✅ Consolidated all server code in mcp-serv/
-- ✅ Project path configured via environment variables in mcp.json
-- ✅ Improved error handling and debugging
+| Инструмент | Описание |
+|:---|:---|
+| `write_gml_file` | Запись GML файла с автоматическим `.bak` бэкапом |
+| `create_script` | Создание нового Script-ассета (.yy + .gml) |
+| `rename_asset` | Каскадное переименование: папка + .yy + .gml + все упоминания в GML |
 
-## Project History
+### 📤 Экспорт / Diff
 
-This MCP server was created based on the idea and functionality of the [vibe2gml](https://github.com/zsturg/vibe2gml) project, which was also developed to simplify and accelerate vibe-coding in the GameMaker Studio 2 game engine.
+| Инструмент | Описание |
+|:---|:---|
+| `export_project_data` | Пагинированный экспорт (limit=5 файлов за раз, используй `next_offset`) |
+| `diff_gml_file` | git diff GML файла против HEAD |
 
-**vibe2gml** is a tool for exporting GMS2 projects to text format for working with AI agents. Our MCP server develops this idea by providing:
-- Direct integration with Cursor IDE through the MCP protocol
-- A richer set of tools for project analysis
-- Real-time data access without file export
-- Simplified configuration and setup
+---
 
-## Additional Resources
+## Архитектура
 
-### Documentation
-- **docs/README.md** - main documentation in English
-- **docs/README_RU.md** - main documentation in Russian
+```
+gms2-mcp-server/
+├── mcp-serv/
+│   ├── server.py        ← FastMCP сервер, 21 инструмент
+│   └── gms2_parser.py   ← CachedParser с TTL-кешем
+├── venv/                ← Python virtual environment
+├── requirements.txt     ← Зависимости (только mcp==1.11.0)
+└── .cursor/mcp.json     ← Конфиг для Cursor IDE
+```
 
-### Useful Links
-- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) - official SDK
-- [MCP Documentation](https://modelcontextprotocol.io/introduction) - protocol documentation
-- [GameMaker Studio 2](https://gamemaker.io/) - official GameMaker website
-- [vibe2gml](https://github.com/zsturg/vibe2gml) - original project that inspired the creation of this MCP server 
+**Ключевые решения:**
+- **FastMCP** — декораторный API вместо 500 строк бойлерплейта
+- **CachedParser** — синглтон с TTL 60с + инвалидация по mtime `.yyp` файла
+- **Компактный вывод** — структурированный JSON без лишних полей
+- **Пагинация** — `export_project_data` не выгружает всё сразу
+
+---
+
+## Требования
+
+- Python 3.8+ (рекомендуется 3.10+, протестировано на 3.12)
+- GameMaker Studio 2 (любая версия с .yyp проектами)
+
+## Устранение проблем
+
+**Сервер красный / не запускается:**
+- Проверь что в конфиге стоит путь к `venv/Scripts/python.exe`, не к системному `python`
+- Проверь что `GMS2_PROJECT_PATH` указывает на папку с `.yyp` файлом
+
+**Инструменты не видны (0 tools):**
+- Перезапусти IDE
+- Проверь stderr лог сервера
+
+**git diff не работает:**
+- Убедись что git установлен и доступен в PATH
+- Убедись что проект GMS2 находится под git-контролем
