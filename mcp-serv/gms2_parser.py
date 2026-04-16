@@ -1356,19 +1356,30 @@ class CachedParser:
 
         rel = str(p.relative_to(self.project_path))
         try:
+            # Создаем копию окружения и отключаем интерактивность
+            env = os.environ.copy()
+            env["GIT_TERMINAL_PROMPT"] = "0"
+            env["GIT_PAGER"] = "cat"
+            
+            # Используем --no-pager чтобы git не ждал нажатия клавиш
+            # Используем -c core.quotepath=off чтобы пути с кириллицей не превращались в \320\260
             result = subprocess.run(
-                ["git", "diff", "HEAD", "--", rel],
-                capture_output=True, text=True,
-                cwd=str(self.project_path), timeout=10,
+                ["git", "--no-pager", "-c", "core.quotepath=off", "diff", "HEAD", "--", rel],
+                capture_output=True,
+                cwd=str(self.project_path),
+                timeout=15,  # Увеличили до 15с на всякий случай
+                env=env
             )
+            
             # git возвращает 128 если не git-репозиторий
             if result.returncode not in (0, 1):
-                err_msg = result.stderr.strip()
+                err_msg = result.stderr.decode("utf-8", errors="replace").strip()
                 if "not a git repository" in err_msg.lower():
                     return {"error": "Project is not a git repository"}
                 return {"error": f"git error: {err_msg}"}
 
-            diff = result.stdout
+            # Декодируем вывод вручную с заменой битых символов
+            diff = result.stdout.decode("utf-8", errors="replace")
             if not diff:
                 return {"file": rel, "status": "no_changes", "diff": ""}
 
@@ -1385,9 +1396,9 @@ class CachedParser:
         except FileNotFoundError:
             return {"error": "git is not installed or not in PATH"}
         except subprocess.TimeoutExpired:
-            return {"error": "git diff timed out"}
+            return {"error": "git diff timed out (operation took longer than 12s)"}
         except Exception as e:
-            return {"error": f"Unexpected error: {e}"}
+            return {"error": f"Unexpected error during diff: {str(e)}"}
 
     # ------------------------------------------------------------------
     # TOOL 21: get_shader_info
