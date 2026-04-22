@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 gms2_parser.py — Модуль парсинга проектов GameMaker Studio 2.
 
@@ -175,18 +176,17 @@ class CachedParser:
         project_path — путь к папке проекта GMS2 (где лежит .yyp файл).
         """
         self.project_path = Path(project_path).resolve()
-        # Хранилище кеша: ключ → (значение, время записи)
-        self._cache: Dict[str, Tuple[Any, float]] = {}
-        # mtime .yyp файла при последнем кеше — для инвалидации
+        # Хранилище кеша: ключ -> значение (добавлен mtime кеш на уровне файлов)
+        self._cache: Dict[str, Any] = {}
+        self._file_cache: Dict[Path, Tuple[float, Any]] = {}
+
+        # mtime .yyp файла (оставлено для совместимости)
         self._yyp_mtime: Optional[float] = None
+        
         # Блокировка для потокобезопасного доступа к кешу.
-        # Нужна потому что asyncio.to_thread() запускает несколько потоков параллельно,
-        # и без Lock возможна гонка при одновременной записи/чтении _cache.
         self._lock: threading.Lock = threading.Lock()
         
-        # Блокировка для тяжелых вычислений (чтобы предотвратить "cache stampede").
-        # Если 5 потоков одновременно запросят поиск, только 1 пойдёт сканировать ФС, 
-        # остальные подождут и возьмут из кеша.
+        # Блокировка для тяжелых вычислений.
         self._compute_lock: threading.Lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -206,21 +206,19 @@ class CachedParser:
     def _cache_is_fresh(self, key: str) -> bool:
         """
         Проверяет свежесть кеша.
-        Кеш устаревает если: прошло больше TTL секунд ИЛИ изменился .yyp файл.
-        Вызывается только внутри захваченного self._lock.
         """
         if key not in self._cache:
             return False
-        _, ts = self._cache[key]
-        # Проверка по времени
-        if time.time() - ts > self.TTL:
-            return False
-        # Проверка по изменению .yyp — если файл изменился, сбрасываем весь кеш
+            
         yyp = self._find_yyp()
         if yyp and yyp.exists():
             current_mtime = yyp.stat().st_mtime
+            if self._yyp_mtime is None:
+                self._yyp_mtime = current_mtime
+                return True
             if current_mtime != self._yyp_mtime:
                 self._cache.clear()
+                self._file_cache.clear()
                 self._yyp_mtime = current_mtime
                 return False
         return True
@@ -229,13 +227,51 @@ class CachedParser:
         """Получить значение из кеша. Возвращает None, если нет или устарел."""
         with self._lock:
             if self._cache_is_fresh(key):
-                return self._cache[key][0]
+                return self._cache[key]
         return None
 
     def _cache_set(self, key: str, value: Any) -> None:
-        """Сохранить значение в кеше с текущей меткой времени."""
+        """Сохранить значение в глобальном кеше (зависящем от yyp)."""
         with self._lock:
-            self._cache[key] = (value, time.time())
+            self._cache[key] = value
+
+    # ------------------------------------------------------------------
+    # Внутренние утилиты: mtime cache для файлов (супер-оптимизация)
+    # ------------------------------------------------------------------
+
+    def _read_file_cached(self, path: Path, parse_json: bool = False) -> Optional[Any]:
+        """Читает файл только если его mtime изменился. Кеширует парсинг JSON или текст раздельно."""
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            # Очищаем оба возможных ключа, если файла нет
+            with self._lock:
+                self._file_cache.pop((path, True), None)
+                self._file_cache.pop((path, False), None)
+            return None
+
+        cache_key = (path, parse_json)
+
+        with self._lock:
+            cached = self._file_cache.get(cache_key)
+            if cached and cached[0] == mtime:
+                return cached[1]
+
+        # Не в кеше или устарел -> читаем ФС
+        try:
+            raw = path.read_text(encoding="utf-8", errors="replace")
+            if parse_json:
+                cleaned = re.sub(r",\s*([}\]])", r"\1", raw)
+                data = json.loads(cleaned)
+            else:
+                data = raw
+            
+            with self._lock:
+                self._file_cache[cache_key] = (mtime, data)
+            return data
+        except Exception as e:
+            logger.debug("Failed to read_file_cached %s, json=%s: %s", path, parse_json, e)
+            return None
 
     # ------------------------------------------------------------------
     # Внутренние утилиты: GMS2
@@ -254,17 +290,9 @@ class CachedParser:
 
     def _read_yy(self, path: Path) -> Optional[Dict]:
         """
-        Читает и парсит .yy или .yyp файл (JSON, возможно с trailing commas).
         Возвращает dict или None при любой ошибке.
         """
-        try:
-            raw = path.read_text(encoding="utf-8", errors="replace")
-            # GMS2 .yy файлы могут содержать лишние запятые перед } или ]
-            cleaned = re.sub(r",\s*([}\]])", r"\1", raw)
-            return json.loads(cleaned)
-        except Exception as e:
-            logger.warning("Failed to read YY file %s: %s", path, e)
-            return None
+        return self._read_file_cached(path, parse_json=True)
 
     def _asset_dir(self, cat_folder: str, name: str) -> Path:
         """Путь к папке конкретного ассета."""
@@ -407,6 +435,10 @@ class CachedParser:
         if err:
             return {"error": err}
 
+        cached = self._cache_get("project_summary")
+        if cached:
+            return cached
+
         cats = self._get_categories()
         counts = {cat: len(assets) for cat, assets in cats.items() if assets}
         return {
@@ -415,6 +447,8 @@ class CachedParser:
             "asset_counts":  counts,
             "total_assets":  sum(counts.values()),
         }
+        self._cache_set("project_summary", result)
+        return result
 
     # ------------------------------------------------------------------
     # TOOL 2: scan_project
@@ -423,12 +457,17 @@ class CachedParser:
     def scan_project(self, category: Optional[str] = None) -> Dict:
         """
         Полный список ассетов проекта по категориям.
-        Если category задан — только эта категория.
-        Возвращает имена, флаг .yy и количество GML файлов.
+        Формат сжат (возвращает только массив имен) для экономии AI-токенов.
         """
         err = self._check_project()
         if err:
             return {"error": err}
+
+        # Глобальный кеш (зависит от .yyp)
+        cache_key = f"scan_project_{category or 'all'}"
+        cached = self._cache_get(cache_key)
+        if cached:
+            return cached
 
         cats = self._get_categories()
 
@@ -445,10 +484,9 @@ class CachedParser:
         }
         for cat_name, assets in cats.items():
             if assets:
-                result["categories"][cat_name] = [
-                    {"name": a["name"], "gml_files": a["gml_count"], "has_yy": a["yy"]}
-                    for a in assets
-                ]
+                result["categories"][cat_name] = [a["name"] for a in assets]
+        
+        self._cache_set(cache_key, result)
         return result
 
     # ------------------------------------------------------------------
@@ -694,10 +732,9 @@ class CachedParser:
                 continue
 
             files_searched += 1
-            try:
-                lines = gml_path.read_text(encoding="utf-8", errors="replace").splitlines()
-            except OSError:
-                continue
+            content = self._read_file_cached(gml_path, parse_json=False)
+            if content is None: continue
+            lines = content.splitlines()
 
             for i, line in enumerate(lines, 1):
                 if pattern.search(line):
@@ -888,40 +925,36 @@ class CachedParser:
         if err:
             return {"error": err}
 
-        gml_refs: List[Dict] = []
+        # Используем defaultdict для сжатия формата (один файл -> список матчей)
+        gml_refs_dict = defaultdict(list)
         yy_refs: List[str] = []
 
         # Поиск в GML файлах
         for gml_path in self._all_gml_files():
-            try:
-                lines = gml_path.read_text(encoding="utf-8", errors="replace").splitlines()
-                for i, line in enumerate(lines, 1):
-                    if asset_name in line:
-                        gml_refs.append({
-                            "file":    str(gml_path.relative_to(self.project_path)),
-                            "line":    i,
-                            "context": line.strip(),
-                        })
-            except OSError:
-                continue
+            content = self._read_file_cached(gml_path, parse_json=False)
+            if content is None: continue
+            
+            lines = content.splitlines()
+            for i, line in enumerate(lines, 1):
+                if asset_name in line:
+                    rel = str(gml_path.relative_to(self.project_path))
+                    gml_refs_dict[rel].append({"l": i, "ctx": line.strip()})
 
-        # Поиск в .yy файлах (как текст — быстрее чем парсинг JSON)
+        # Поиск в .yy файлах (используем mtime кеш)
         for cat_folder in ASSET_CATEGORIES.values():
             cat_path = self.project_path / cat_folder
             if not cat_path.is_dir():
                 continue
             for yy_file in cat_path.rglob("*.yy"):
-                try:
-                    if asset_name in yy_file.read_text(encoding="utf-8", errors="replace"):
-                        yy_refs.append(str(yy_file.relative_to(self.project_path)))
-                except OSError:
-                    continue
+                content = self._read_file_cached(yy_file, parse_json=False) # Читаем как текст для быстрого in
+                if content and asset_name in content:
+                    yy_refs.append(str(yy_file.relative_to(self.project_path)))
 
         return {
             "asset_name":    asset_name,
-            "gml_ref_count": len(gml_refs),
+            "gml_ref_count": sum(len(matches) for matches in gml_refs_dict.values()),
             "yy_ref_count":  len(yy_refs),
-            "gml_references": gml_refs,
+            "gml_references": dict(gml_refs_dict),
             "yy_references":  yy_refs,
         }
 
@@ -1092,17 +1125,16 @@ class CachedParser:
         macros: List[Dict] = []
 
         for gml_path in self._all_gml_files():
-            try:
-                content = gml_path.read_text(encoding="utf-8", errors="replace")
-                rel = str(gml_path.relative_to(self.project_path))
-                for m in macro_pattern.finditer(content):
-                    macros.append({
-                        "name":   m.group(1).strip(),
-                        "value":  m.group(2).strip(),
-                        "source": rel,
-                    })
-            except OSError:
-                continue
+            content = self._read_file_cached(gml_path, parse_json=False)
+            if content is None: continue
+                
+            rel = str(gml_path.relative_to(self.project_path))
+            for m in macro_pattern.finditer(content):
+                macros.append({
+                    "name":   m.group(1).strip(),
+                    "value":  m.group(2).strip(),
+                    "source": rel,
+                })
 
         return {
             "total":  len(macros),
@@ -1221,41 +1253,53 @@ class CachedParser:
         global_pat = re.compile(r"global\.(\w+)\s*=", re.MULTILINE)
         macro_pat  = re.compile(r"^#macro\s+(\w+)\s+(.+)$", re.MULTILINE)
 
-        functions:   List[Dict] = []
-        globals_vars: List[Dict] = []
-        macros:       List[Dict] = []
+        # Сжатая структура: file_path -> { "f": [], "g": [], "m": [] }
+        index_by_file = defaultdict(lambda: {"f": [], "g": [], "m": []})
+
+        total_funcs = 0
+        total_globals = 0
+        total_macros = 0
 
         for gml_path in self._all_gml_files():
             rel = str(gml_path.relative_to(self.project_path))
-            try:
-                content = gml_path.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
+            content = self._read_file_cached(gml_path, parse_json=False)
+            if content is None: continue
 
-            for m in fn_pat.finditer(content):
-                functions.append({
-                    "name":   m.group(1),
-                    "params": m.group(2).strip(),
-                    "file":   rel,
-                })
+            funcs = [f"{m.group(1)}({m.group(2).strip()})" for m in fn_pat.finditer(content)]
+            if funcs:
+                index_by_file[rel]["f"] = funcs
+                total_funcs += len(funcs)
 
             seen: set = set()
+            glob_vars = []
             for m in global_pat.finditer(content):
                 var = m.group(1)
                 if var not in seen:
-                    globals_vars.append({"name": f"global.{var}", "file": rel})
+                    glob_vars.append(f"global.{var}")
                     seen.add(var)
+            if glob_vars:
+                index_by_file[rel]["g"] = glob_vars
+                total_globals += len(glob_vars)
 
-            for m in macro_pat.finditer(content):
-                macros.append({"name": m.group(1), "value": m.group(2).strip(), "file": rel})
+            macs = [f"{m.group(1)} {m.group(2).strip()}" for m in macro_pat.finditer(content)]
+            if macs:
+                index_by_file[rel]["m"] = macs
+                total_macros += len(macs)
+                
+            # Очищаем пустые записи, чтобы не мусорить
+            if not index_by_file[rel]["f"] and not index_by_file[rel]["g"] and not index_by_file[rel]["m"]:
+                del index_by_file[rel]
+
+        # Убираем все пустые массивы из значений для еще большего сжатия
+        optimized_index = {}
+        for file_key, data in index_by_file.items():
+            optimized_index[file_key] = {k: v for k, v in data.items() if v}
 
         result = {
-            "function_count": len(functions),
-            "global_count":   len(globals_vars),
-            "macro_count":    len(macros),
-            "functions":      functions,
-            "global_variables": globals_vars,
-            "macros":         macros,
+            "function_count": total_funcs,
+            "global_count":   total_globals,
+            "macro_count":    total_macros,
+            "index":          optimized_index,
         }
         self._cache_set("definitions_index", result)
         return result
