@@ -441,7 +441,7 @@ class CachedParser:
 
         cats = self._get_categories()
         counts = {cat: len(assets) for cat, assets in cats.items() if assets}
-        return {
+        result = {
             "project_name":  self.project_path.name,
             "project_path":  str(self.project_path),
             "asset_counts":  counts,
@@ -697,13 +697,13 @@ class CachedParser:
     def search_in_project(
         self,
         query: str,
+        is_regex: bool = False,
         case_sensitive: bool = False,
         category: Optional[str] = None,
         max_results: int = 50,
     ) -> Dict:
         """
         Поиск текста во всех GML файлах проекта.
-        Поддерживает фильтр по категории и ограничение числа результатов.
         """
         err = self._check_project()
         if err:
@@ -711,9 +711,9 @@ class CachedParser:
 
         flags = 0 if case_sensitive else re.IGNORECASE
         try:
-            pattern = re.compile(re.escape(query), flags)
+            pattern = re.compile(query if is_regex else re.escape(query), flags)
         except re.error as e:
-            return {"error": f"Invalid query: {e}"}
+            return {"error": f"Invalid regex/query: {e}"}
 
         # Определяем папку категории для фильтра
         cat_folder: Optional[str] = None
@@ -940,13 +940,15 @@ class CachedParser:
                     rel = str(gml_path.relative_to(self.project_path))
                     gml_refs_dict[rel].append({"l": i, "ctx": line.strip()})
 
-        # Поиск в .yy файлах (используем mtime кеш)
-        for cat_folder in ASSET_CATEGORIES.values():
-            cat_path = self.project_path / cat_folder
-            if not cat_path.is_dir():
+        # Поиск в .yy файлах (используем кеш категорий вместо тяжёлого rglob)
+        cats = self._get_categories()
+        for cat_name, assets in cats.items():
+            cat_folder = ASSET_CATEGORIES.get(cat_name)
+            if not cat_folder:
                 continue
-            for yy_file in cat_path.rglob("*.yy"):
-                content = self._read_file_cached(yy_file, parse_json=False) # Читаем как текст для быстрого in
+            for asset in assets:
+                yy_file = self.project_path / cat_folder / asset["name"] / f"{asset['name']}.yy"
+                content = self._read_file_cached(yy_file, parse_json=False)
                 if content and asset_name in content:
                     yy_refs.append(str(yy_file.relative_to(self.project_path)))
 

@@ -2,9 +2,12 @@ import os
 import sys
 import json
 import logging
+import logging.handlers
 import asyncio
 import time
+from pathlib import Path
 from typing import Optional, List, Dict, Any
+from concurrent.futures import ThreadPoolExecutor
 
 # Принудительно ставим UTF-8 для stdout/stderr
 if sys.stdout.encoding != 'utf-8':
@@ -14,6 +17,11 @@ if sys.stdout.encoding != 'utf-8':
     except AttributeError:
         pass
 
+# Windows: принудительно unbuffered mode, чтобы stdio transport не зависал на flush
+if sys.platform == "win32":
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+
 # Добавляем путь к серверу в sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
@@ -21,13 +29,28 @@ if current_dir not in sys.path:
 
 from gms2_parser import CachedParser
 
+# ---------------------------------------------------------------------------
+# Логирование: файл (DEBUG) + stderr (WARNING+, чтобы не мешать stdio MCP)
+# ---------------------------------------------------------------------------
+LOG_DIR = Path(current_dir).parent / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "mcp-server.log"
+
 logger = logging.getLogger("gms2-mcp")
 logger.propagate = False
-if not logger.handlers:
-    handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] gms2-mcp: %(message)s', datefmt='%H:%M:%S'))
-    logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+
+# Rotating file handler (макс 2 МБ, 3 бэкапа)
+fh = logging.handlers.RotatingFileHandler(LOG_FILE, maxBytes=2_000_000, backupCount=3, encoding="utf-8")
+fh.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+fh.setLevel(logging.DEBUG)
+logger.addHandler(fh)
+
+# Stderr handler — только WARNING+, чтобы не засорять stdio transport
+sh = logging.StreamHandler(sys.stderr)
+sh.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s', datefmt='%H:%M:%S'))
+sh.setLevel(logging.WARNING)
+logger.addHandler(sh)
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -37,6 +60,9 @@ except ImportError:
 
 mcp = FastMCP("gms2-mcp")
 
+# Отдельный executor для тяжёлых синхронных операций — не трогаем default pool
+_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="gms2_mcp")
+
 def _parser() -> CachedParser:
     project_path = os.environ.get("GMS2_PROJECT_PATH", "").strip()
     if not project_path:
@@ -44,26 +70,31 @@ def _parser() -> CachedParser:
     return CachedParser.get(project_path)
 
 def _fmt(data: dict) -> str:
-    return json.dumps(data, separators=(',', ':'), ensure_ascii=False)
-
-# ГАРАНТИЯ СТАБИЛЬНОСТИ: строго последовательное выполнение.
-_semaphore = asyncio.Semaphore(1)
+    """Форматирует словарь в JSON строку с отступами (indent=2) для лучшей читаемости в UI Windsurf."""
+    return json.dumps(data, indent=2, ensure_ascii=False)
 
 async def _run(fn, tool_name: str = "unknown") -> str:
+    """
+    Запускает синхронную функцию fn в отдельном треде через собственный executor.
+    Убран глобальный Semaphore — CachedParser защищён threading.Lock внутри.
+    """
     start_time = time.time()
-    async with _semaphore:
-        try:
-            logger.info(f"Executing tool '{tool_name}'...")
-            result = await asyncio.wait_for(asyncio.to_thread(fn), timeout=60.0)
-            elapsed = time.time() - start_time
-            logger.info(f"Tool '{tool_name}' finished in {elapsed:.3f}s")
-            return result
-        except asyncio.TimeoutError:
-            logger.error(f"Tool '{tool_name}' timed out after 60s")
-            return _fmt({"error": f"Timeout: {tool_name}"})
-        except Exception as e:
-            logger.error(f"Tool '{tool_name}' error: {e}", exc_info=True)
-            return _fmt({"error": f"Error in {tool_name}: {str(e)}"})
+    loop = asyncio.get_running_loop()
+    try:
+        logger.info(f"Executing tool '{tool_name}'...")
+        result = await asyncio.wait_for(
+            loop.run_in_executor(_executor, fn),
+            timeout=60.0
+        )
+        elapsed = time.time() - start_time
+        logger.info(f"Tool '{tool_name}' finished in {elapsed:.3f}s")
+        return result
+    except asyncio.TimeoutError:
+        logger.error(f"Tool '{tool_name}' timed out after 60s")
+        return _fmt({"error": f"Timeout: {tool_name}"})
+    except Exception as e:
+        logger.error(f"Tool '{tool_name}' error: {e}", exc_info=True)
+        return _fmt({"error": f"Error in {tool_name}: {str(e)}"})
 
 # ---------------------------------------------------------------------------
 # === ИНСТРУМЕНТЫ (с восстановленными аргументами для UI) ===================
@@ -77,31 +108,49 @@ async def get_project_summary() -> str:
     return await _run(lambda: _fmt(_parser().get_project_summary()), "get_project_summary")
 
 @mcp.tool()
-async def scan_project() -> str:
+async def scan_project(category: Optional[str] = None) -> str:
     """
-    Return a full list of all assets in the project (grouped by category).
+    Return a full list of all assets in the project.
+    
+    Args:
+        category: Optional filter by category (e.g. 'Objects', 'Scripts').
     """
-    return await _run(lambda: _fmt(_parser().scan_project()), "scan_project")
+    return await _run(lambda: _fmt(_parser().scan_project(category)), "scan_project")
 
 @mcp.tool()
-async def list_assets(category: str) -> str:
+async def list_assets(
+    category: str,
+    offset: int = 0,
+    limit: int = 50,
+) -> str:
     """
     List all assets in a specific category.
 
     Args:
         category: Assets category (e.g. 'Objects', 'Scripts', 'Sprites', 'Rooms')
+        offset: Start index for pagination.
+        limit: Number of items to return.
     """
-    return await _run(lambda: _fmt(_parser().list_assets(category)), "list_assets")
+    return await _run(lambda: _fmt(_parser().list_assets(category, offset, limit)), "list_assets")
 
 @mcp.tool()
-async def get_gml_content(file_path: str) -> str:
+async def get_gml_content(
+    file_path: str,
+    start_line: Optional[int] = None,
+    end_line: Optional[int] = None,
+) -> str:
     """
     Read the code (GML) from a file.
 
     Args:
         file_path: Path to the .gml file relative to project root.
+        start_line: Optional start line number (1-indexed).
+        end_line: Optional end line number (inclusive).
     """
-    return await _run(lambda: _fmt(_parser().get_gml_content(file_path)), "get_gml_content")
+    return await _run(
+        lambda: _fmt(_parser().get_gml_content(file_path, start_line, end_line)),
+        "get_gml_content"
+    )
 
 @mcp.tool()
 async def get_object_info(name: str) -> str:
@@ -111,6 +160,7 @@ async def get_object_info(name: str) -> str:
     Args:
         name: Name of the object.
     """
+    # Возвращает спрайт, родителя и список всех GML-файлов событий объекта.
     return await _run(lambda: _fmt(_parser().get_object_info(name)), "get_object_info")
 
 @mcp.tool()
@@ -131,11 +181,13 @@ async def get_sprite_info(name: str) -> str:
     Args:
         name: Name of the sprite.
     """
+    # Извлекает размеры, origin, bbox и количество кадров спрайта.
     return await _run(lambda: _fmt(_parser().get_sprite_info(name)), "get_sprite_info")
 
 @mcp.tool()
 async def search_in_project(
     query: str,
+    is_regex: bool = False,
     case_sensitive: bool = False,
     category: Optional[str] = None,
     max_results: int = 50,
@@ -144,13 +196,14 @@ async def search_in_project(
     Search for text in all GML files.
 
     Args:
-        query: Text to search for.
-        case_sensitive: Whether the search is case-sensitive.
-        category: Optional filter by asset category (e.g. 'Objects').
-        max_results: Maximum number of matches to return.
+        query: Text or regex to search for.
+        is_regex: Use regular expressions.
+        case_sensitive: Case-sensitive search.
+        category: Filter by category (e.g. 'Objects').
+        max_results: Maximum matches to return.
     """
     return await _run(
-        lambda: _fmt(_parser().search_in_project(query, case_sensitive, category, max_results)),
+        lambda: _fmt(_parser().search_in_project(query, is_regex, case_sensitive, category, max_results)),
         "search_in_project"
     )
 
@@ -302,6 +355,7 @@ async def diff_gml_file(file_path: str) -> str:
     Args:
         file_path: Relative path to the .gml file.
     """
+    # Показывает изменения в файле через git diff. Полезно для проверки правок AI.
     return await _run(lambda: _fmt(_parser().diff_gml_file(file_path)), "diff_gml_file")
 
 @mcp.tool()
@@ -316,7 +370,14 @@ async def get_shader_info(name: str) -> str:
 
 if __name__ == "__main__":
     project_path = os.environ.get("GMS2_PROJECT_PATH", "<not set>")
-    logger.info("GMS2 MCP Server starting...")
+    logger.info("=" * 50)
+    logger.info("GMS2 MCP Server starting")
     logger.info(f"Project path: {project_path}")
-    logger.info("UI Args Restored. Concurrency: Sema(1).")
-    mcp.run()
+    logger.info(f"Log file: {LOG_FILE}")
+    logger.info(f"Python: {sys.version}")
+    logger.info("=" * 50)
+    try:
+        mcp.run()
+    finally:
+        _executor.shutdown(wait=True)
+        logger.info("GMS2 MCP Server shutdown complete")
