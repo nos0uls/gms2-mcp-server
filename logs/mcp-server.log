@@ -349,3 +349,125 @@
 2026-04-26 22:10:16,748 [INFO] gms2-mcp: Tool 'get_gml_content' finished in 0.001s
 2026-04-26 22:11:44,944 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
 2026-04-26 22:11:45,632 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-26 22:38:06,133 [INFO] gms2-mcp: Executing tool 'validate_project'...
+2026-04-26 22:38:06,474 [INFO] gms2-mcp: Tool 'validate_project' finished in 0.341s
+2026-04-27 14:27:36,891 [INFO] gms2-mcp: ==================================================
+2026-04-27 14:27:36,891 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-04-27 14:27:36,891 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-04-27 14:27:36,892 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-04-27 14:27:36,892 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-04-27 14:27:36,893 [INFO] gms2-mcp: ==================================================
+2026-04-27 14:28:01,776 [INFO] gms2-mcp: ==================================================
+2026-04-27 14:28:01,776 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-04-27 14:28:01,777 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-04-27 14:28:01,777 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-04-27 14:28:01,777 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-04-27 14:28:01,777 [INFO] gms2-mcp: ==================================================
+2026-04-27 14:28:01,804 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-27 14:30:47,208 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-27 14:31:34,297 [INFO] gms2-mcp: ==================================================
+2026-04-27 14:31:34,299 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-04-27 14:31:34,299 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-04-27 14:31:34,299 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-04-27 14:31:34,300 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-04-27 14:31:34,300 [INFO] gms2-mcp: ==================================================
+2026-04-27 17:39:33,220 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-27 17:40:17,392 [INFO] gms2-mcp: ==================================================
+2026-04-27 17:40:17,392 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-04-27 17:40:17,392 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-04-27 17:40:17,392 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-04-27 17:40:17,392 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-04-27 17:40:17,393 [INFO] gms2-mcp: ==================================================
+2026-04-27 17:59:45,004 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-27 22:05:00,618 [INFO] gms2-mcp: ==================================================
+2026-04-27 22:05:00,618 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-04-27 22:05:00,618 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-04-27 22:05:00,618 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-04-27 22:05:00,618 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-04-27 22:05:00,618 [INFO] gms2-mcp: ==================================================
+2026-04-27 22:05:18,413 [INFO] gms2-mcp: ==================================================
+2026-04-27 22:05:18,413 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-04-27 22:05:18,413 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-04-27 22:05:18,413 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-04-27 22:05:18,413 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-04-27 22:05:18,413 [INFO] gms2-mcp: ==================================================
+2026-04-28 20:06:03,700 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-28 20:06:04,343 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-28 21:31:57,218 [INFO] gms2-mcp: Executing tool 'get_object_info'...
+2026-04-28 21:31:57,240 [INFO] gms2-mcp: Tool 'get_object_info' finished in 0.022s
+2026-04-28 21:32:23,002 [INFO] gms2-mcp: Executing tool 'list_assets'...
+2026-04-28 21:32:23,448 [INFO] gms2-mcp: Tool 'list_assets' finished in 0.447s
+2026-04-28 21:32:31,613 [INFO] gms2-mcp: Executing tool 'get_sprite_info'...
+2026-04-28 21:32:31,616 [INFO] gms2-mcp: Tool 'get_sprite_info' finished in 0.003s
+2026-04-28 21:32:31,702 [INFO] gms2-mcp: Executing tool 'get_sprite_info'...
+2026-04-28 21:32:31,704 [INFO] gms2-mcp: Tool 'get_sprite_info' finished in 0.002s
+2026-04-28 21:36:00,675 [INFO] gms2-mcp: Executing tool 'search_in_project'...
+2026-04-28 21:36:01,893 [INFO] gms2-mcp: Tool 'search_in_project' finished in 1.218s
+2026-04-28 21:36:05,194 [INFO] gms2-mcp: Executing tool 'search_in_project'...
+2026-04-28 21:36:05,805 [INFO] gms2-mcp: Tool 'search_in_project' finished in 0.611s
+2026-04-28 21:36:10,368 [INFO] gms2-mcp: Executing tool 'list_assets'...
+2026-04-28 21:36:10,746 [INFO] gms2-mcp: Tool 'list_assets' finished in 0.379s
+2026-04-28 21:36:15,038 [INFO] gms2-mcp: Executing tool 'list_assets'...
+2026-04-28 21:36:15,040 [INFO] gms2-mcp: Tool 'list_assets' finished in 0.002s
+2026-04-28 21:36:20,854 [INFO] gms2-mcp: Executing tool 'get_gml_content'...
+2026-04-28 21:36:20,856 [INFO] gms2-mcp: Tool 'get_gml_content' finished in 0.002s
+2026-04-28 21:36:38,447 [INFO] gms2-mcp: Executing tool 'search_in_project'...
+2026-04-28 21:36:38,558 [INFO] gms2-mcp: Tool 'search_in_project' finished in 0.111s
+2026-04-28 21:36:46,277 [INFO] gms2-mcp: Executing tool 'get_object_info'...
+2026-04-28 21:36:46,279 [INFO] gms2-mcp: Tool 'get_object_info' finished in 0.002s
+2026-04-28 21:36:49,934 [INFO] gms2-mcp: Executing tool 'get_gml_content'...
+2026-04-28 21:36:49,935 [INFO] gms2-mcp: Tool 'get_gml_content' finished in 0.001s
+2026-04-28 21:37:00,473 [INFO] gms2-mcp: Executing tool 'decode_object_events'...
+2026-04-28 21:37:00,475 [INFO] gms2-mcp: Tool 'decode_object_events' finished in 0.001s
+2026-04-28 21:37:20,161 [INFO] gms2-mcp: Executing tool 'get_sprite_info'...
+2026-04-28 21:37:20,163 [INFO] gms2-mcp: Tool 'get_sprite_info' finished in 0.002s
+2026-04-28 21:37:44,716 [INFO] gms2-mcp: Executing tool 'get_shader_info'...
+2026-04-28 21:37:44,721 [INFO] gms2-mcp: Tool 'get_shader_info' finished in 0.004s
+2026-04-28 21:38:02,095 [INFO] gms2-mcp: Executing tool 'search_in_project'...
+2026-04-28 21:38:02,214 [INFO] gms2-mcp: Tool 'search_in_project' finished in 0.120s
+2026-04-28 21:38:09,095 [INFO] gms2-mcp: Executing tool 'get_gml_content'...
+2026-04-28 21:38:09,097 [INFO] gms2-mcp: Tool 'get_gml_content' finished in 0.002s
+2026-04-28 21:39:03,769 [INFO] gms2-mcp: Executing tool 'search_in_project'...
+2026-04-28 21:39:03,881 [INFO] gms2-mcp: Tool 'search_in_project' finished in 0.112s
+2026-04-28 21:39:08,520 [INFO] gms2-mcp: Executing tool 'get_gml_content'...
+2026-04-28 21:39:08,522 [INFO] gms2-mcp: Tool 'get_gml_content' finished in 0.002s
+2026-04-28 21:39:17,310 [INFO] gms2-mcp: Executing tool 'search_in_project'...
+2026-04-28 21:39:17,438 [INFO] gms2-mcp: Tool 'search_in_project' finished in 0.128s
+2026-04-28 21:39:52,962 [INFO] gms2-mcp: Executing tool 'search_in_project'...
+2026-04-28 21:39:53,095 [INFO] gms2-mcp: Tool 'search_in_project' finished in 0.133s
+2026-04-28 21:40:01,125 [INFO] gms2-mcp: Executing tool 'get_gml_content'...
+2026-04-28 21:40:01,127 [INFO] gms2-mcp: Tool 'get_gml_content' finished in 0.001s
+2026-04-28 21:40:13,282 [INFO] gms2-mcp: Executing tool 'get_gml_content'...
+2026-04-28 21:40:13,284 [INFO] gms2-mcp: Tool 'get_gml_content' finished in 0.002s
+2026-04-28 21:41:31,897 [INFO] gms2-mcp: Executing tool 'write_gml_file'...
+2026-04-28 21:41:32,409 [INFO] gms2-mcp: Tool 'write_gml_file' finished in 0.512s
+2026-04-28 21:41:34,138 [INFO] gms2-mcp: Executing tool 'write_gml_file'...
+2026-04-28 21:41:34,142 [INFO] gms2-mcp: Tool 'write_gml_file' finished in 0.004s
+2026-04-30 08:45:08,861 [INFO] gms2-mcp: ==================================================
+2026-04-30 08:45:08,861 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-04-30 08:45:08,862 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-04-30 08:45:08,862 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-04-30 08:45:08,863 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-04-30 08:45:08,863 [INFO] gms2-mcp: ==================================================
+2026-04-30 08:45:21,267 [INFO] gms2-mcp: ==================================================
+2026-04-30 08:45:21,269 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-04-30 08:45:21,269 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-04-30 08:45:21,269 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-04-30 08:45:21,269 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-04-30 08:45:21,269 [INFO] gms2-mcp: ==================================================
+2026-04-30 10:14:13,746 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-30 10:14:14,359 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-30 12:23:32,847 [INFO] gms2-mcp: ==================================================
+2026-04-30 12:23:32,848 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-04-30 12:23:32,848 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-04-30 12:23:32,848 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-04-30 12:23:32,848 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-04-30 12:23:32,848 [INFO] gms2-mcp: ==================================================
+2026-04-30 12:23:34,824 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-30 13:21:52,379 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
+2026-04-30 13:23:12,682 [INFO] gms2-mcp: ==================================================
+2026-04-30 13:23:13,034 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-04-30 13:23:13,039 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-04-30 13:23:13,040 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-04-30 13:23:13,062 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-04-30 13:23:13,065 [INFO] gms2-mcp: ==================================================
