@@ -615,3 +615,10 @@
 2026-05-01 03:06:55,633 [INFO] gms2-mcp: Tool 'search_in_project' finished in 0.025s
 2026-05-01 03:06:55,800 [INFO] gms2-mcp: Executing tool 'search_in_project'...
 2026-05-01 03:06:55,833 [INFO] gms2-mcp: Tool 'search_in_project' finished in 0.033s
+2026-05-01 19:22:43,585 [INFO] gms2-mcp: ==================================================
+2026-05-01 19:22:43,585 [INFO] gms2-mcp: GMS2 MCP Server starting
+2026-05-01 19:22:43,585 [INFO] gms2-mcp: Project path: C:/Users/n0souls/Documents/GitHub/Undefinedtale-888/Undefinedtale888
+2026-05-01 19:22:43,586 [INFO] gms2-mcp: Log file: C:\Users\n0souls\gms2-mcp-server\logs\mcp-server.log
+2026-05-01 19:22:43,586 [INFO] gms2-mcp: Python: 3.12.8 (tags/v3.12.8:2dc476b, Dec  3 2024, 19:30:04) [MSC v.1942 64 bit (AMD64)]
+2026-05-01 19:22:43,586 [INFO] gms2-mcp: ==================================================
+2026-05-01 19:23:09,453 [INFO] gms2-mcp: GMS2 MCP Server shutdown complete
