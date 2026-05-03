@@ -60,8 +60,17 @@ except ImportError:
 
 mcp = FastMCP("gms2-mcp")
 
-# Отдельный executor для тяжёлых синхронных операций — не трогаем default pool
-_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="gms2_mcp")
+# Отдельный executor для тяжёлых синхронных операций.
+# max_workers=8 — с запасом, т.к. при "зомби" задачах (timeout отменил Future,
+# но поток всё ещё выполняет fn) worker остаётся занятым.
+_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="gms2_mcp")
+
+# Семафор на уровне asyncio: обрабатываем tool-вызовы строго последовательно.
+# Это решает две проблемы stdio transport:
+# 1. Interleaving ответов в stdout — два потока одновременно пишут JSON-RPC,
+#    байты перемешиваются, клиент получает битый JSON и падает.
+# 2. ThreadPoolExecutor не забивается: одна задача в пуле за раз.
+_tool_semaphore = asyncio.Semaphore(1)
 
 def _parser() -> CachedParser:
     project_path = os.environ.get("GMS2_PROJECT_PATH", "").strip()
@@ -76,21 +85,25 @@ def _fmt(data: dict) -> str:
 async def _run(fn, tool_name: str = "unknown") -> str:
     """
     Запускает синхронную функцию fn в отдельном треде через собственный executor.
-    Убран глобальный Semaphore — CachedParser защищён threading.Lock внутри.
+    Обработка строго последовательная (Semaphore=1) — защита stdio transport
+    от interleaving JSON-RPC ответов в stdout, когда два потока завершаются
+    одновременно.  Таймаут 65 с покрывает и ожидание семафора, и выполнение.
     """
     start_time = time.time()
     loop = asyncio.get_running_loop()
     try:
-        logger.info(f"Executing tool '{tool_name}'...")
-        result = await asyncio.wait_for(
-            loop.run_in_executor(_executor, fn),
-            timeout=60.0
-        )
+        async with asyncio.timeout(65.0):
+            async with _tool_semaphore:
+                logger.info(f"Executing tool '{tool_name}'...")
+                result = await asyncio.wait_for(
+                    loop.run_in_executor(_executor, fn),
+                    timeout=60.0
+                )
         elapsed = time.time() - start_time
         logger.info(f"Tool '{tool_name}' finished in {elapsed:.3f}s")
         return result
     except asyncio.TimeoutError:
-        logger.error(f"Tool '{tool_name}' timed out after 60s")
+        logger.error(f"Tool '{tool_name}' timed out after 60s (execution) or 65s (total)")
         return _fmt({"error": f"Timeout: {tool_name}"})
     except Exception as e:
         logger.error(f"Tool '{tool_name}' error: {e}", exc_info=True)
@@ -367,6 +380,49 @@ async def get_shader_info(name: str) -> str:
         name: Name of the shader.
     """
     return await _run(lambda: _fmt(_parser().get_shader_info(name)), "get_shader_info")
+
+@mcp.tool()
+async def create_asset(
+    category: str,
+    name: str,
+    content: str = "",
+    events: Optional[List[str]] = None,
+    parent_folder: Optional[str] = None,
+) -> str:
+    """
+    Create a new GMS2 asset (Objects, Scripts, or Shaders).
+
+    Args:
+        category: Asset category - "Objects", "Scripts", or "Shaders".
+        name: Name of the new asset.
+        content: Initial GML code (for Scripts) or empty string.
+        events: List of event names for Objects, e.g. ["Create", "Step", "Draw_64"].
+        parent_folder: Optional folder path in resource tree, e.g. "folders/Objects.yy".
+    """
+    return await _run(
+        lambda: _fmt(_parser().create_asset(category, name, content, events, parent_folder)),
+        "create_asset",
+    )
+
+@mcp.tool()
+async def add_object_event(
+    object_name: str,
+    event: str,
+    content: str = "",
+) -> str:
+    """
+    Add a new event to an existing GMS2 Object.
+    Creates the GML file and updates the object's .yy file.
+
+    Args:
+        object_name: Name of the existing object.
+        event: Event name, e.g. "Create", "Step", "Draw_64", "Draw GUI", "Alarm_5".
+        content: Optional initial GML code for the event file.
+    """
+    return await _run(
+        lambda: _fmt(_parser().add_object_event(object_name, event, content)),
+        "add_object_event",
+    )
 
 if __name__ == "__main__":
     project_path = os.environ.get("GMS2_PROJECT_PATH", "<not set>")

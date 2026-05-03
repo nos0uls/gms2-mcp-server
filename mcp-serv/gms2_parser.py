@@ -115,6 +115,95 @@ GMS2_EVENTS: Dict[int, Dict[int, str]] = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Reverse mapping: human-readable event name → (eventType, eventNum, filename)
+# Используется при создании новых событий через add_object_event.
+# ---------------------------------------------------------------------------
+
+EVENT_NAME_MAP: Dict[str, Tuple[int, int, str]] = {
+    # Core lifecycle
+    "Create":        (0, 0, "Create_0"),
+    "Destroy":       (1, 0, "Destroy_0"),
+    "Cleanup":       (12, 0, "Cleanup_0"),
+
+    # Step events
+    "Step":          (3, 0, "Step_0"),
+    "Begin Step":    (3, 1, "Step_1"),
+    "End Step":      (3, 2, "Step_2"),
+
+    # Draw events
+    "Draw":          (8, 0, "Draw_0"),
+    "Draw Begin":    (8, 3, "Draw_3"),
+    "Draw End":      (8, 4, "Draw_4"),
+    "Draw GUI Begin": (8, 5, "Draw_5"),
+    "Draw GUI End":  (8, 6, "Draw_6"),
+    "Pre Draw":      (8, 75, "Draw_75"),
+    "Post Draw":     (8, 76, "Draw_76"),
+    "Draw GUI":      (8, 64, "Draw_64"),
+
+    # Mouse events
+    "Left Button":        (6, 10, "Mouse_10"),
+    "Right Button":       (6, 11, "Mouse_11"),
+    "No Button":          (6, 9,  "Mouse_9"),
+    "Mouse Enter":        (6, 50, "Mouse_50"),
+    "Mouse Leave":        (6, 51, "Mouse_51"),
+    "Wheel Up":           (6, 60, "Mouse_60"),
+    "Wheel Down":         (6, 61, "Mouse_61"),
+    "Left Button Pressed":  (6, 0, "Mouse_0"),
+    "Right Button Pressed": (6, 1, "Mouse_1"),
+    "Left Button Released": (6, 3, "Mouse_3"),
+    "Right Button Released":(6, 4, "Mouse_4"),
+
+    # Other events (частые)
+    "Outside Room":        (7, 0,  "Other_0"),
+    "Intersect Boundary":  (7, 1,  "Other_1"),
+    "Game Start":          (7, 2,  "Other_2"),
+    "Game End":            (7, 3,  "Other_3"),
+    "Room Start":          (7, 4,  "Other_4"),
+    "Room End":            (7, 5,  "Other_5"),
+    "Animation End":       (7, 6,  "Other_6"),
+    "Path End":            (7, 7,  "Other_7"),
+    "Async – Image Loaded": (7, 30, "Other_30"),
+    "Async – Sound Playback Ended": (7, 31, "Other_31"),
+}
+
+# Добавляем Alarms 0..11
+for _i in range(12):
+    EVENT_NAME_MAP[f"Alarm_{_i}"] = (2, _i, f"Alarm_{_i}")
+
+# Добавляем User Events 0..15
+for _i in range(16):
+    EVENT_NAME_MAP[f"User Event {_i}"] = (7, 8 + _i, f"Other_{8 + _i}")
+
+# Добавляем Keyboard / Key Press / Key Release по VK-кодам
+for _vk, _vk_name in _VK_NAMES.items():
+    # Keyboard (Hold)
+    EVENT_NAME_MAP[f"Keyboard_{_vk_name}"]       = (5, _vk, f"Keyboard_{_vk}")
+    # Key Press
+    EVENT_NAME_MAP[f"KeyPress_{_vk_name}"]        = (9, _vk, f"KeyPress_{_vk}")
+    # Key Release
+    EVENT_NAME_MAP[f"KeyRelease_{_vk_name}"]      = (10, _vk, f"KeyRelease_{_vk}")
+    # Также по eventType 5 alias (Left Arrow, Up Arrow etc.)
+    EVENT_NAME_MAP[f"Keyboard {_vk_name} (Hold)"] = (5, _vk, f"Keyboard_{_vk}")
+    EVENT_NAME_MAP[f"Key {_vk_name} (Press)"]     = (9, _vk, f"KeyPress_{_vk}")
+    EVENT_NAME_MAP[f"Key {_vk_name} (Release)"]   = (10, _vk, f"KeyRelease_{_vk}")
+
+# Дополнительные alias: прямые имена файлов событий (Draw_64, Step_0, Create_0 и т.д.)
+EVENT_NAME_MAP["Create_0"]  = (0, 0, "Create_0")
+EVENT_NAME_MAP["Destroy_0"] = (1, 0, "Destroy_0")
+EVENT_NAME_MAP["Cleanup_0"] = (12, 0, "Cleanup_0")
+EVENT_NAME_MAP["Step_0"]    = (3, 0, "Step_0")
+EVENT_NAME_MAP["Step_1"]    = (3, 1, "Step_1")
+EVENT_NAME_MAP["Step_2"]    = (3, 2, "Step_2")
+EVENT_NAME_MAP["Draw_0"]    = (8, 0, "Draw_0")
+EVENT_NAME_MAP["Draw_3"]    = (8, 3, "Draw_3")
+EVENT_NAME_MAP["Draw_4"]    = (8, 4, "Draw_4")
+EVENT_NAME_MAP["Draw_5"]    = (8, 5, "Draw_5")
+EVENT_NAME_MAP["Draw_6"]    = (8, 6, "Draw_6")
+EVENT_NAME_MAP["Draw_64"]   = (8, 64, "Draw_64")
+EVENT_NAME_MAP["Draw_75"]   = (8, 75, "Draw_75")
+EVENT_NAME_MAP["Draw_76"]   = (8, 76, "Draw_76")
+
 # Папки ассетов GMS2: отображаемое имя → папка на диске
 ASSET_CATEGORIES: Dict[str, str] = {
     "Objects":    "objects",
@@ -202,6 +291,36 @@ class CachedParser:
         except OSError:
             pass
         return None
+
+    def _add_to_yyp(self, name: str, category: str) -> None:
+        """Добавляет новый ресурс в массив resources .yyp файла проекта."""
+        yyp_path = self._find_yyp()
+        if not yyp_path:
+            return
+
+        cat_folder = ASSET_CATEGORIES.get(category, category.lower() + "s")
+        yy_path = f"{cat_folder}/{name}/{name}.yy"
+
+        text = yyp_path.read_text(encoding="utf-8")
+
+        # Проверяем, нет ли уже такого ресурса
+        if f'"name":"{name}","path":"{yy_path}"' in text:
+            return
+
+        # Находим массив resources
+        resources_start = text.find('"resources":[')
+        if resources_start == -1:
+            return
+
+        # Ищем закрывающую ] массива resources
+        match = re.search(r'(\n  \],\n  ")', text[resources_start:])
+        if not match:
+            return
+
+        insert_pos = resources_start + match.start()
+        new_entry = f'    {{"id":{{"name":"{name}","path":"{yy_path}",}},}},\n'
+        text = text[:insert_pos] + new_entry + text[insert_pos:]
+        yyp_path.write_text(text, encoding="utf-8")
 
     def _cache_is_fresh(self, key: str) -> bool:
         """
@@ -797,7 +916,8 @@ class CachedParser:
 
             p.write_text(content, encoding="utf-8")
             # Сбрасываем кеш — содержимое файла изменилось
-            self._cache.clear()
+            with self._lock:
+                self._cache.clear()
 
             return {
                 "success":       True,
@@ -845,7 +965,8 @@ class CachedParser:
             (scripts_dir / f"{name}.gml").write_text(content, encoding="utf-8")
 
             # Инвалидируем кеш — структура проекта изменилась
-            self._cache.clear()
+            with self._lock:
+                self._cache.clear()
 
             return {
                 "success":     True,
@@ -1485,3 +1606,241 @@ class CachedParser:
             result["shader_type"] = yy_data.get("type", "?")
 
         return result
+
+    # ------------------------------------------------------------------
+    # TOOL 22: create_asset
+    # ------------------------------------------------------------------
+
+    def create_asset(
+        self,
+        category: str,
+        name: str,
+        content: str = "",
+        events: Optional[List[str]] = None,
+        parent_folder: Optional[str] = None,
+    ) -> Dict:
+        """
+        Создаёт новый ассет в проекте. Поддерживаемые категории: Objects, Scripts, Shaders.
+        Для Objects — events — список названий событий (например ["Create", "Step", "Draw_64"]).
+        Для Scripts — content записывается в .gml файл.
+        Для Shaders — создаются .vsh и .fsh с базовым шаблоном.
+        """
+        cat_folder = ASSET_CATEGORIES.get(category)
+        if not cat_folder:
+            return {"error": f"Unknown category: {category}. Supported: Objects, Scripts, Shaders"}
+
+        asset_dir = self.project_path / cat_folder / name
+        if asset_dir.exists():
+            return {"error": f"Asset '{name}' already exists in {category}"}
+
+        try:
+            asset_dir.mkdir(parents=True)
+        except OSError as e:
+            return {"error": f"Failed to create directory: {e}"}
+
+        result: Dict[str, Any] = {"name": name, "category": category, "created_files": []}
+
+        if category == "Objects":
+            self._create_object_asset(asset_dir, name, events or [], parent_folder, result)
+        elif category == "Scripts":
+            self._create_script_asset(asset_dir, name, content, parent_folder, result)
+        elif category == "Shaders":
+            self._create_shader_asset(asset_dir, name, parent_folder, result)
+        else:
+            return {"error": f"Category '{category}' is not supported for creation."}
+
+        # Добавляем ресурс в .yyp файл проекта
+        self._add_to_yyp(name, category)
+
+        with self._lock:
+            self._cache.clear()
+        result["success"] = True
+        result["note"] = "Asset created and registered in .yyp. Reload project in GameMaker Studio 2 if needed."
+        return result
+
+    def _create_object_asset(self, asset_dir: Path, name: str, events: List[str], parent_folder: Optional[str], result: Dict):
+        """Вспомогательный метод для создания Object ассета."""
+        event_list: List[Dict] = []
+        created_gml: List[str] = []
+        for ev_name in events:
+            mapping = EVENT_NAME_MAP.get(ev_name)
+            if not mapping:
+                raise ValueError(f"Unknown event '{ev_name}'")
+            et, en, fname = mapping
+            event_list.append({
+                "$GMEvent": "v1",
+                "%Name": "",
+                "collisionObjectId": None,
+                "eventNum": en,
+                "eventType": et,
+                "isDnD": False,
+                "name": "",
+                "resourceType": "GMEvent",
+                "resourceVersion": "2.0",
+            })
+            gml_path = asset_dir / f"{fname}.gml"
+            gml_path.write_text("", encoding="utf-8")
+            created_gml.append(str(gml_path.relative_to(self.project_path)))
+
+        parent = self._resolve_parent(parent_folder, "Objects", "folders/Objects.yy")
+        yy_data = {
+            "$GMObject": "",
+            "%Name": name,
+            "eventList": event_list,
+            "managed": True,
+            "name": name,
+            "overriddenProperties": [],
+            "parent": parent,
+            "parentObjectId": None,
+            "persistent": False,
+            "physicsAngularDamping": 0.1,
+            "physicsDensity": 0.5,
+            "physicsFriction": 0.2,
+            "physicsGroup": 1,
+            "physicsKinematic": False,
+            "physicsLinearDamping": 0.1,
+            "physicsObject": False,
+            "physicsRestitution": 0.1,
+            "physicsSensor": False,
+            "physicsShape": 1,
+            "physicsShapePoints": [],
+            "physicsStartAwake": True,
+            "properties": [],
+            "resourceType": "GMObject",
+            "resourceVersion": "2.0",
+            "solid": False,
+            "spriteId": None,
+            "spriteMaskId": None,
+            "visible": True,
+        }
+        (asset_dir / f"{name}.yy").write_text(json.dumps(yy_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        result["created_files"] = [str((asset_dir / f"{name}.yy").relative_to(self.project_path))] + created_gml
+
+    def _create_script_asset(self, asset_dir: Path, name: str, content: str, parent_folder: Optional[str], result: Dict):
+        """Вспомогательный метод для создания Script ассета."""
+        parent = self._resolve_parent(parent_folder, "Scripts", "folders/Scripts.yy")
+        yy_data = {
+            "$GMScript": "v1",
+            "%Name": name,
+            "isCompatibility": False,
+            "isDnD": False,
+            "name": name,
+            "parent": parent,
+            "resourceType": "GMScript",
+            "resourceVersion": "2.0",
+        }
+        (asset_dir / f"{name}.yy").write_text(json.dumps(yy_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        gml_path = asset_dir / f"{name}.gml"
+        gml_path.write_text(content, encoding="utf-8")
+        result["created_files"] = [
+            str((asset_dir / f"{name}.yy").relative_to(self.project_path)),
+            str(gml_path.relative_to(self.project_path)),
+        ]
+
+    def _create_shader_asset(self, asset_dir: Path, name: str, parent_folder: Optional[str], result: Dict):
+        """Вспомогательный метод для создания Shader ассета."""
+        parent = self._resolve_parent(parent_folder, "Shaders", "folders/Shaders.yy")
+        yy_data = {
+            "$GMShader": "",
+            "%Name": name,
+            "name": name,
+            "parent": parent,
+            "resourceType": "GMShader",
+            "resourceVersion": "2.0",
+            "type": 1,
+        }
+        (asset_dir / f"{name}.yy").write_text(json.dumps(yy_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        vsh_tmpl = "attribute vec3 in_Position;\nattribute vec4 in_Colour;\nattribute vec2 in_TextureCoord;\nvarying vec2 v_vTexcoord;\nvarying vec4 v_vColour;\nvoid main()\n{\n    gl_Position = gm_Matrices[MATRIX_WORLD_VIEW_PROJECTION] * vec4(in_Position, 1.0);\n    v_vColour = in_Colour;\n    v_vTexcoord = in_TextureCoord;\n}\n"
+        fsh_tmpl = "varying vec2 v_vTexcoord;\nvarying vec4 v_vColour;\nvoid main()\n{\n    gl_FragColor = v_vColour * texture2D(gm_BaseTexture, v_vTexcoord);\n}\n"
+        (asset_dir / f"{name}.vsh").write_text(vsh_tmpl, encoding="utf-8")
+        (asset_dir / f"{name}.fsh").write_text(fsh_tmpl, encoding="utf-8")
+        result["created_files"] = [
+            str((asset_dir / f"{name}.yy").relative_to(self.project_path)),
+            str((asset_dir / f"{name}.vsh").relative_to(self.project_path)),
+            str((asset_dir / f"{name}.fsh").relative_to(self.project_path)),
+        ]
+
+    def _resolve_parent(self, parent_folder: Optional[str], default_name: str, default_path: str) -> Dict:
+        """Разрешает путь к папке в структуру parent для .yy файла."""
+        if not parent_folder:
+            return {"name": default_name, "path": default_path}
+        if parent_folder.endswith(".yy"):
+            p = Path(parent_folder)
+            return {"name": p.stem, "path": parent_folder}
+        return {"name": parent_folder, "path": f"folders/{parent_folder}.yy"}
+
+    # ------------------------------------------------------------------
+    # TOOL 23: add_object_event
+    # ------------------------------------------------------------------
+
+    def add_object_event(self, object_name: str, event: str, content: str = "") -> Dict:
+        """
+        Добавляет новое событие к существующему объекту.
+        Создаёт .gml файл и обновляет .yy (eventList).
+        Пример event: "Create", "Step", "Draw_64", "Alarm_5", "Draw GUI".
+        """
+        obj_dir = self._asset_dir("objects", object_name)
+        yy_path = obj_dir / f"{object_name}.yy"
+
+        if not yy_path.exists():
+            return {"error": f"Object '{object_name}' not found"}
+
+        mapping = EVENT_NAME_MAP.get(event)
+        if not mapping:
+            return {
+                "error": f"Unknown event '{event}'",
+                "available_events": sorted(EVENT_NAME_MAP.keys())[:50],
+            }
+
+        et, en, fname = mapping
+        gml_path = obj_dir / f"{fname}.gml"
+
+        # Читаем .yy (с очисткой trailing commas)
+        yy_data = self._read_yy(yy_path)
+        if yy_data is None:
+            return {"error": f"Failed to parse .yy for object '{object_name}'"}
+
+        event_list = yy_data.get("eventList", [])
+
+        # Проверяем дублирование
+        for existing in event_list:
+            if existing.get("eventType") == et and existing.get("eventNum") == en:
+                return {"error": f"Event '{event}' already exists in object '{object_name}'"}
+
+        # Добавляем новое событие
+        event_list.append({
+            "$GMEvent": "v1",
+            "%Name": "",
+            "collisionObjectId": None,
+            "eventNum": en,
+            "eventType": et,
+            "isDnD": False,
+            "name": "",
+            "resourceType": "GMEvent",
+            "resourceVersion": "2.0",
+        })
+        yy_data["eventList"] = event_list
+
+        # Пишем обновлённый .yy
+        try:
+            yy_path.write_text(json.dumps(yy_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        except OSError as e:
+            return {"error": f"Failed to write .yy: {e}"}
+
+        # Создаём .gml файл
+        try:
+            gml_path.write_text(content, encoding="utf-8")
+        except OSError as e:
+            return {"error": f"Failed to write .gml: {e}"}
+
+        # Инвалидируем кеш
+        with self._lock:
+            self._cache.clear()
+
+        return {
+            "success": True,
+            "object": object_name,
+            "event": event,
+            "file": str(gml_path.relative_to(self.project_path)),
+            "note": "Reload project in GameMaker Studio 2 to see changes",
+        }
